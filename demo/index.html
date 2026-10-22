@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="dark light" />
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <title>代码高亮 · Theme Playground</title>
+  </head>
+  <body>
+    <main class="app">
+      <header class="page-header">
+        <div>
+          <p class="eyebrow">vscode-tint</p>
+          <h1>Theme Playground<span class="version">0.1</span></h1>
+          <p class="description">一份代码，两种高亮引擎。切换 VS Code 主题，看看颜色如何变化。</p>
+        </div>
+        <span class="local-badge"><span></span> 本地运行 · 无需登录</span>
+      </header>
+      <section class="toolbar" aria-label="预览设置">
+        <label>配色主题<select id="theme" aria-label="配色主题"></select></label>
+        <label
+          >展示方式<select id="engine" aria-label="展示方式">
+            <option value="both">双引擎对比</option>
+            <option value="highlightjs">highlight.js</option>
+            <option value="textmate">TextMate</option>
+          </select></label
+        >
+        <label>代码示例<select id="sample" aria-label="代码示例"></select></label>
+        <label
+          >语言模式<select id="language" aria-label="语言模式">
+            <option value="auto">自动识别</option>
+            <option value="typescript">TypeScript</option>
+            <option value="javascript">JavaScript</option>
+            <option value="python">Python</option>
+            <option value="json">JSON</option>
+            <option value="html">HTML</option>
+            <option value="bash">Shell</option>
+            <option value="plaintext">纯文本</option>
+            <option value="unknown">未知语言（回退）</option>
+          </select></label
+        >
+      </section>
+      <section class="workspace" aria-label="代码编辑和高亮预览">
+        <article class="panel source-panel">
+          <header class="panel-header">
+            <div>
+              <span class="panel-dot"></span>
+              <h2>源代码</h2>
+            </div>
+            <button id="reset" type="button">重置示例</button>
+          </header>
+          <label for="source" class="sr-only">编辑用于高亮的源代码</label>
+          <textarea
+            id="source"
+            spellcheck="false"
+            autocapitalize="off"
+            autocomplete="off"
+            aria-describedby="source-hint"
+          ></textarea>
+          <footer class="panel-footer">
+            <span id="source-hint">直接编辑，即时预览</span><span id="character-count"></span>
+          </footer>
+        </article>
+        <div class="previews" id="previews">
+          <article class="panel preview-panel" id="highlightjs-panel">
+            <header class="panel-header">
+              <div>
+                <span class="engine-symbol">H</span>
+                <h2>highlight.js</h2>
+                <span class="pill">轻量</span>
+              </div>
+              <span class="render-status" id="highlightjs-status" role="status"></span>
+            </header>
+            <pre
+              tabindex="0"
+              aria-label="highlight.js 高亮结果"
+            ><code id="highlightjs-output"></code></pre>
+            <footer class="panel-footer">highlight.js 分词 · TextMate 代表性 scope 配色</footer>
+          </article>
+          <article class="panel preview-panel" id="textmate-panel">
+            <header class="panel-header">
+              <div>
+                <span class="engine-symbol">T</span>
+                <h2>TextMate</h2>
+                <span class="pill">完整语法</span>
+              </div>
+              <span class="render-status" id="textmate-status" role="status"></span>
+            </header>
+            <pre
+              tabindex="0"
+              aria-label="TextMate 高亮结果"
+            ><code id="textmate-output"></code></pre>
+            <footer class="panel-footer">真实 grammar 分词 · Oniguruma WASM</footer>
+          </article>
+        </div>
+      </section>
+      <footer class="page-footer">
+        <p id="theme-info"></p>
+        <p>颜色来自内置主题快照；预览不包含编辑器语义高亮。</p>
+      </footer>
+    </main>
+    <style id="highlight-theme"></style>
+    <script type="module" src="/main.ts"></script>
+  </body>
+</html>

@@ -1,0 +1,111 @@
+{
+  "name": "vscode-tint",
+  "version": "0.1.0",
+  "description": "VS Code theme-aware code highlighting with highlight.js and TextMate engines",
+  "license": "MIT",
+  "author": "chaselen",
+  "type": "module",
+  "engines": {
+    "node": ">=22.18.0"
+  },
+  "packageManager": "npm@10.9.3",
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "THIRD_PARTY_NOTICES.txt"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./highlightjs": {
+      "types": "./dist/highlightjs.d.ts",
+      "import": "./dist/highlightjs.js"
+    },
+    "./textmate": {
+      "types": "./dist/textmate.d.ts",
+      "import": "./dist/textmate.js"
+    },
+    "./languages": {
+      "types": "./dist/languages.d.ts",
+      "import": "./dist/languages.js"
+    },
+    "./detection": {
+      "types": "./dist/detection.d.ts",
+      "import": "./dist/detection.js"
+    },
+    "./oniguruma": {
+      "types": "./dist/oniguruma.d.ts",
+      "import": "./dist/oniguruma.js"
+    },
+    "./vscode": {
+      "types": "./dist/vscode.d.ts",
+      "import": "./dist/vscode.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs && tsc -p tsconfig.build.json",
+    "check": "tsc --noEmit",
+    "test": "vitest run",
+    "format": "oxfmt",
+    "format:check": "oxfmt --check .",
+    "prepack": "npm run check && npm test && npm run build",
+    "test:package": "npm run build && node scripts/smoke-package.mjs",
+    "demo": "vite --config demo/vite.config.ts",
+    "demo:build": "vite build --config demo/vite.config.ts",
+    "demo:preview": "vite preview --config demo/vite.config.ts"
+  },
+  "dependencies": {
+    "highlight.js": "^11.11.1",
+    "vscode-textmate": "9.3.2"
+  },
+  "peerDependencies": {
+    "tm-grammars": "1.32.22",
+    "vscode-oniguruma": "2.0.1"
+  },
+  "peerDependenciesMeta": {
+    "vscode-oniguruma": {
+      "optional": true
+    },
+    "tm-grammars": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@types/node": "~22.18.0",
+    "@types/vscode": "~1.86.0",
+    "entities": "^7.0.1",
+    "esbuild": "~0.28.0",
+    "oxfmt": "~0.73.0",
+    "tm-grammars": "1.32.22",
+    "typescript": "~5.9.3",
+    "vite": "8.3.4",
+    "vitest": "~4.1.11",
+    "vscode-oniguruma": "2.0.1",
+    "jsonc-parser": "^3.3.1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/chaselen/vscode-tint.git"
+  },
+  "homepage": "https://github.com/chaselen/vscode-tint#readme",
+  "bugs": {
+    "url": "https://github.com/chaselen/vscode-tint/issues"
+  },
+  "keywords": [
+    "vscode",
+    "webview",
+    "syntax-highlighting",
+    "highlight.js",
+    "textmate",
+    "theme"
+  ]
+}
