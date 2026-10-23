@@ -1,7 +1,7 @@
 import './style.css'
-import { createHighlightJsHighlighter } from '../src/highlightjs'
-import { commonHighlightJs, detectCodeLanguage } from '../src/detection'
-import type { CodeHighlighter, SyntaxTheme } from '../src/index'
+import { version as packageVersion } from '../package.json'
+import { createHighlightJsHighlighter } from '../src/presets/highlightjs'
+import type { CodeHighlighter, FallbackReason, SyntaxTheme } from '../src/index'
 import { samples } from './samples'
 import darkPlus from './themes/dark-plus.json'
 import lightPlus from './themes/light-plus.json'
@@ -34,6 +34,7 @@ function element<T extends HTMLElement>(id: string): T {
   if (!node) throw new Error(`Missing demo element: ${id}`)
   return node as T
 }
+element('package-version').textContent = packageVersion
 const themeSelect = element<HTMLSelectElement>('theme')
 const engineSelect = element<HTMLSelectElement>('engine')
 const sampleSelect = element<HTMLSelectElement>('sample')
@@ -97,24 +98,16 @@ function getEngine(name: Engine): Promise<CodeHighlighter> {
   let value = pending.get(name)
   if (!value) {
     value = (async () => {
-      if (name === 'highlightjs') return createHighlightJsHighlighter({ hljs: commonHighlightJs })
-      const [{ createTextmateHighlighter }, { loadOniguruma }, grammar, { default: wasmUrl }] =
-        await Promise.all([
-          import('../src/textmate'),
-          import('../src/oniguruma'),
-          import('../src/languages'),
-          import('vscode-oniguruma/release/onig.wasm?url')
-        ])
+      if (name === 'highlightjs') return createHighlightJsHighlighter()
+      const [{ createTextmateHighlighter }, { default: wasmUrl }] = await Promise.all([
+        import('../src/presets/textmate'),
+        import('vscode-oniguruma/release/onig.wasm?url')
+      ])
       return createTextmateHighlighter({
-        onigLib: loadOniguruma(fetch(wasmUrl)),
-        loadGrammar: grammar.loadCodeGrammar,
-        getInjections: grammar.getCodeInjections,
-        resolveLanguage: grammar.resolveCodeLanguage,
-        getScope: grammar.getCodeLanguageScope,
-        // Demo snapshots include embedded grammars; allow their first regex compilation extra time.
+        wasm: fetch(wasmUrl),
+        // 嵌入语法首次编译需要额外预算，预设本身沿用底层默认值
         maxLineTime: 1000,
-        maxBlockTime: 1500,
-        detectLanguage: detectCodeLanguage
+        maxBlockTime: 1500
       })
     })().catch(error => {
       pending.delete(name)
@@ -123,6 +116,19 @@ function getEngine(name: Engine): Promise<CodeHighlighter> {
     pending.set(name, value)
   }
   return value
+}
+
+const fallbackLabels: Record<FallbackReason, string> = {
+  plaintext: '已选择纯文本',
+  'language-not-specified': '未指定语言',
+  'language-not-detected': '未识别出语言',
+  'unsupported-language': '不支持的语言',
+  'grammar-unavailable': '语法不可用',
+  'code-too-long': '代码超长',
+  'line-too-long': '单行超长',
+  timeout: '分词超时',
+  'theme-changed': '主题已变化，请重试',
+  disposed: '引擎已释放'
 }
 
 async function render() {
@@ -158,7 +164,7 @@ async function render() {
         if (name === 'highlightjs') style.textContent = highlighter.getStyleSheet()
         output.className = result.className
         output.innerHTML = result.html
-        status.textContent = `${result.highlighted ? result.language : '纯文本'} · ${Math.round(performance.now() - started)} ms`
+        status.textContent = `${result.highlighted ? result.language : `纯文本（${result.reason ? fallbackLabels[result.reason] : '未高亮'}）`} · ${Math.round(performance.now() - started)} ms`
         status.dataset.state = result.highlighted ? 'highlighted' : 'plain'
       } catch (error) {
         if (version !== generation) return

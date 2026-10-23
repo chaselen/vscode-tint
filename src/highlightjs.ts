@@ -1,6 +1,6 @@
 import type { HLJSApi } from 'highlight.js'
 import { escapeHtml } from './index.js'
-import type { CodeHighlighter, HighlightOptions, SyntaxTheme } from './index.js'
+import type { CodeHighlighter, FallbackReason, HighlightOptions, SyntaxTheme } from './index.js'
 import { createScopeStyles } from './theme.js'
 
 /** Representative scopes approximate TextMate colors; language and parent-scope context are unavailable. */
@@ -109,8 +109,13 @@ export async function createHighlightJsHighlighter(
       if (disposed) throw new Error('Highlighter disposed')
       await pending
       if (disposed) throw new Error('Highlighter disposed')
-      const plain = { html: escapeHtml(source), className, highlighted: false }
-      if (source.length > (options.maxCodeLength ?? 100000)) return plain
+      const plain = (reason: FallbackReason) => ({
+        html: escapeHtml(source),
+        className,
+        highlighted: false,
+        reason
+      })
+      if (source.length > (options.maxCodeLength ?? 100000)) return plain('code-too-long')
       const language = request.language?.toLowerCase()
       if (
         language === 'plaintext' ||
@@ -118,14 +123,17 @@ export async function createHighlightJsHighlighter(
         language === 'txt' ||
         language === 'plain'
       )
-        return plain
-      if (language && !options.hljs.getLanguage(language)) return plain
+        return plain('plaintext')
+      if (language && !options.hljs.getLanguage(language)) return plain('unsupported-language')
       let selected = language
       if (!selected && request.autoDetect !== false) {
         const sample = source.slice(0, options.maxDetectionLength ?? 12000)
         selected = options.hljs.highlightAuto(sample, options.detectLanguages).language
       }
-      if (!selected) return plain
+      if (!selected)
+        return plain(
+          request.autoDetect === false ? 'language-not-specified' : 'language-not-detected'
+        )
       const result = options.hljs.highlight(source, { language: selected, ignoreIllegals: true })
       return { html: result.value, language: selected, highlighted: true, className }
     },

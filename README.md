@@ -27,33 +27,25 @@ ESM 包，提供 TypeScript 声明。Node 要求 `^20.19.0 || >=22.12.0`；Webvi
 
 ## highlight.js 引擎
 
-由调用方注册语言，使用 `newInstance()` 隔离其他 highlight.js 使用者。
+常用语言可以直接使用预设，默认支持自动识别：
 
 ```ts
-import core from 'highlight.js/lib/core'
-import javascript from 'highlight.js/lib/languages/javascript'
-import { createHighlightJsHighlighter } from 'vscode-tint/highlightjs'
+import { createHighlightJsHighlighter } from 'vscode-tint/presets/highlightjs'
 import type { SyntaxTheme } from 'vscode-tint'
 
-const hljs = core.newInstance()
-hljs.registerLanguage('javascript', javascript)
 const theme: SyntaxTheme = {
-  settings: [
-    { scope: 'keyword', settings: { foreground: '#ff7b72' } },
-    { scope: 'string', settings: { foreground: '#a5d6ff' } }
-  ]
+  settings: [{ scope: 'string', settings: { foreground: '#a5d6ff' } }]
 }
-const highlighter = await createHighlightJsHighlighter({ hljs, theme })
+const highlighter = await createHighlightJsHighlighter({ theme })
 const result = await highlighter.highlight('const value = "hello"', { language: 'js' })
-
 codeElement.classList.add(result.className)
 codeElement.innerHTML = result.html
 styleElement.textContent = highlighter.getStyleSheet()
 ```
 
-省略 `language` 时自动识别已注册语言，可用 `detectLanguages` 限制候选，或通过 `{ autoDetect: false }` 关闭。也可从 `vscode-tint/detection` 导入包含 18 种候选语言的 `commonHighlightJs`，直接作为 `hljs` 传入。
+省略 `language` 时自动识别，可用 `detectLanguages` 限制候选，或在 `highlight()` 中通过 `{ autoDetect: false }` 关闭。每个实例默认生成独立的 `className`，请应用返回类名和 CSS，不要叠加其他 highlight.js 主题 CSS。
 
-每个实例默认生成独立的 `className`，请将返回的类名和 `getStyleSheet()` 的 CSS 应用到代码元素，不要叠加其他 highlight.js 主题 CSS。可用 `scopeMap` 调整类别对应的 scope，例如 `{ 'title.function': ['entity.name.function', 'support.function'] }`；候选按顺序选择首个有样式的 scope。
+需要自定义语言集合时，继续使用底层 `vscode-tint/highlightjs` 工厂并传入注册好语言的 `hljs.newInstance()`。预设也接受 `scopeMap`，用于调整 highlight.js 类别对应的代表性 scope。
 
 ## TextMate 引擎
 
@@ -61,48 +53,24 @@ styleElement.textContent = highlighter.getStyleSheet()
 
 ```ts
 import wasmUrl from 'vscode-oniguruma/release/onig.wasm?url'
-import { loadOniguruma } from 'vscode-tint/oniguruma'
-import { createTextmateHighlighter } from 'vscode-tint/textmate'
-import {
-  resolveCodeLanguage,
-  getCodeLanguageScope,
-  getCodeInjections,
-  loadCodeGrammar
-} from 'vscode-tint/languages'
+import { createTextmateHighlighter } from 'vscode-tint/presets/textmate'
 
 const highlighter = await createTextmateHighlighter({
-  onigLib: loadOniguruma(fetch(wasmUrl)),
-  loadGrammar: loadCodeGrammar,
-  getInjections: getCodeInjections,
-  resolveLanguage: resolveCodeLanguage,
-  getScope: getCodeLanguageScope,
-  theme,
-  detectLanguage: async source => {
-    const { detectCodeLanguage } = await import('vscode-tint/detection')
-    return detectCodeLanguage(source)
-  }
+  wasm: fetch(wasmUrl),
+  theme
 })
 const result = await highlighter.highlight('const answer = 42')
 codeElement.classList.add(result.className)
 codeElement.innerHTML = result.html
 ```
 
-TextMate 本身不识别语言，示例通过可选的 `detectLanguage` 接入 highlight.js；省略时需显式指定语言，否则返回纯文本。
+预设默认启用自动检测、常用 grammar 及 JS / TS / TSX 的 HTML/CSS 标签模板注入；通过 `autoDetect: false`、`injections: false` 分别关闭。未声明语言时才自动检测；显式未知语言不会再次猜测。
 
-- `loadOniguruma()` 接受 `ArrayBuffer`、`Uint8Array`（含 Node Buffer）、`Response` 或对应 Promise。Node 中可直接传入 `readFile()` 结果；WASM 初始化失败时工厂调用拒绝。
-- `/languages` 提供常用语法及嵌入依赖的按需加载。动态加载减少首次加载量，但预设引用的 grammar 仍会进入打包产物。可通过 `loadGrammar`、`resolveLanguage`、`getScope` 和 `onigLib` 接入自定义语法或正则引擎。
-- `getInjections: getCodeInjections` 启用 JS / TS / TSX 的上游 HTML/CSS 标签模板规则；省略时不启用。YAML+ERB 尚不支持。
+`wasm` 接受 `ArrayBuffer`、`Uint8Array`（含 Node Buffer）、`Response` 或对应 Promise；Node 中可直接传入 `readFile()` 结果。预设不下载 WASM，也不绑定 URL 或 CDN，初始化失败时工厂调用拒绝。grammar 按需加载，但预设引用的语法仍会进入打包产物。
 
-自定义注入沿用官方 `RegistryOptions.getInjections` 契约，并由 `loadGrammar` 提供注入 grammar 及依赖：
+需要自定义 grammar、正则引擎或检测器时，保留底层 `vscode-tint/textmate` 工厂，传入 `onigLib`、`loadGrammar`、`resolveLanguage`、`getScope`，可选 `getInjections` 和 `detectLanguage`。该工厂不会自动配置检测或注入。`/languages`、`/detection` 和 `/oniguruma` 仍可独立组合。
 
-```ts
-getInjections: scope => [
-  ...(getCodeInjections(scope) ?? []),
-  ...(scope === 'source.js' ? ['my.custom.injection'] : [])
-]
-```
-
-注入 grammar 须定义 `injectionSelector`。修改注入配置时应重建引擎；预设不保证覆盖外层语言中嵌套的脚本、任意自定义标签或所有插值嵌套。
+自定义 `getInjections(scope)` 返回注入 grammar 的 scope 数组或 `undefined`，并由 `loadGrammar()` 提供带有 `injectionSelector` 的 grammar 及依赖；修改注入配置时重建实例。内置注入不保证覆盖外层语言中的脚本、自定义标签或所有插值嵌套，YAML+ERB 尚不支持。
 
 ## 读取 VS Code 主题
 
@@ -138,6 +106,27 @@ highlighter.dispose()
 `getStyleSheet()` 在轻量引擎返回 CSS，TextMate 引擎返回空字符串，颜色直接写入 token span。调用方负责 DOM、CSS 和异步渲染顺序，避免旧结果覆盖新代码或新主题；主题更新完成后需重新高亮。
 
 未知的显式语言、纯文本、超出长度限制或 TextMate 超时返回转义后的完整文本，`highlighted: false`，不会再次猜测未知语言。加载错误向外抛出，应用应捕获并显示原文；释放后继续调用会抛错。
+
+## 回退原因
+
+纯文本回退始终保留完整转义文本，`highlighted: false`，并提供可选 `reason`。成功结果不带 `reason`；字段保持可选以兼容现有自定义高亮器。
+
+| reason                            | 含义                                    |
+| --------------------------------- | --------------------------------------- |
+| `plaintext`                       | 显式选择纯文本                          |
+| `language-not-specified`          | 未声明语言且没有启用检测                |
+| `language-not-detected`           | 检测器未识别出语言                      |
+| `unsupported-language`            | 不支持该语言                            |
+| `grammar-unavailable`             | 已解析语言，但没有可用 scope 或 grammar |
+| `code-too-long` / `line-too-long` | 超出代码或单行长度上限                  |
+| `timeout`                         | TextMate 分词超时                       |
+| `theme-changed` / `disposed`      | 处理中主题已变化或实例已释放，结果作废  |
+
+```ts
+if (!result.highlighted) console.debug('高亮回退:', result.reason)
+```
+
+加载错误仍抛出，应用需捕获；释放后新调用仍抛错。`disposed` 仅用于释放前已经开始的 TextMate 请求。
 
 ## 使用边界
 

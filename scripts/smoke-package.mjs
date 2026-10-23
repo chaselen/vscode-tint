@@ -89,14 +89,42 @@ try {
     !inputs.some(input => /vscode-oniguruma|tm-grammars/.test(input)),
     'Light bundle must not contain full-engine dependencies'
   )
+  const presetBrowser = browser
+    .replace(
+      "import { createHighlightJsHighlighter } from 'vscode-tint/highlightjs'",
+      "import { createHighlightJsHighlighter } from 'vscode-tint/presets/highlightjs'"
+    )
+    .replace("import { commonHighlightJs } from 'vscode-tint/detection'", '')
+    .replace('hljs: commonHighlightJs, ', '')
+  await writeFile(join(consumer, 'preset-browser.mjs'), presetBrowser)
+  const presetBundle = await build({
+    absWorkingDir: consumer,
+    entryPoints: ['preset-browser.mjs'],
+    bundle: true,
+    platform: 'browser',
+    format: 'esm',
+    write: false,
+    metafile: true
+  })
+  assert(
+    !Object.keys(presetBundle.metafile.inputs).some(input =>
+      /vscode-oniguruma|tm-grammars/.test(input)
+    ),
+    'Light preset must not bundle grammar or WASM'
+  )
   await writeFile(
     join(consumer, 'consumer.ts'),
     `
-    import type { CodeHighlighter } from 'vscode-tint'
+    import type { CodeHighlighter, FallbackReason } from 'vscode-tint'
+    import { createTextmateHighlighter as createPreset } from 'vscode-tint/presets/textmate'
+    import type { TextmatePresetOptions } from 'vscode-tint/presets/textmate'
     import { createHighlightJsHighlighter } from 'vscode-tint/highlightjs'
     import core from 'highlight.js/lib/core'
     const highlighter: CodeHighlighter = await createHighlightJsHighlighter({ hljs: core.newInstance() })
-    await highlighter.highlight('hello', { autoDetect: false })
+    const plain = await highlighter.highlight('hello', { autoDetect: false })
+    const reason: FallbackReason | undefined = plain.reason
+    const options: TextmatePresetOptions = { wasm: new Uint8Array(), autoDetect: false }
+    void reason; void options; void createPreset
   `
   )
   run(process.execPath, [
@@ -153,6 +181,27 @@ try {
   `
   )
   run(process.execPath, ['full.mjs'])
+  await writeFile(
+    join(consumer, 'preset.mjs'),
+    `
+    import assert from 'node:assert/strict'
+    import { readFile } from 'node:fs/promises'
+    import { createRequire } from 'node:module'
+    import { createTextmateHighlighter } from 'vscode-tint/presets/textmate'
+    import { createHighlightJsHighlighter } from 'vscode-tint/presets/highlightjs'
+    const light = await createHighlightJsHighlighter()
+    assert.equal((await light.highlight('<x>', {language:'unknown'})).reason, 'unsupported-language')
+    light.dispose()
+    const full = await createTextmateHighlighter({wasm: readFile(createRequire(import.meta.url).resolve('vscode-oniguruma/release/onig.wasm')), maxLineTime:1000, maxBlockTime:1500})
+    const result = await full.highlight('<!doctype html><html><script>const x = 1</script></html>')
+    assert(result.highlighted)
+    assert.equal(result.language, 'xml')
+    assert.equal((await full.highlight('<x>', {language:'plaintext'})).reason, 'plaintext')
+    full.dispose()
+  `
+  )
+  run(process.execPath, ['preset.mjs'])
+
   console.log(
     `Packed consumer checks passed. Tarball: ${tarball.size} bytes; light browser bundle with 18 language definitions: ${bundle.outputFiles[0].contents.length} bytes.`
   )

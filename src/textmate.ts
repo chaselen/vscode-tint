@@ -2,7 +2,13 @@ import textmate from 'vscode-textmate'
 import { resolveDetectedTextmateLanguage } from './textmateLanguage.js'
 import type { IOnigLib, IRawGrammar, RegistryOptions } from 'vscode-textmate'
 import { escapeHtml } from './index.js'
-import type { CodeHighlighter, HighlightOptions, LanguageDetector, SyntaxTheme } from './index.js'
+import type {
+  CodeHighlighter,
+  FallbackReason,
+  HighlightOptions,
+  LanguageDetector,
+  SyntaxTheme
+} from './index.js'
 import { applyTheme, tokenStyle } from './theme.js'
 
 /** Grammar resolution is injected so consumers choose which languages and assets to ship. */
@@ -27,9 +33,14 @@ export async function createTextmateHighlighter(
 ): Promise<CodeHighlighter> {
   // 工厂完成时引擎必须已就绪，WASM 加载失败直接由创建调用捕获
   const onigLib = await options.onigLib
+  const unavailableScopes = new Set<string>()
   const registry = new textmate.Registry({
     onigLib: Promise.resolve(onigLib),
-    loadGrammar: options.loadGrammar,
+    loadGrammar: async scope => {
+      const grammar = await options.loadGrammar(scope)
+      if (!grammar) unavailableScopes.add(scope)
+      return grammar
+    },
     getInjections: options.getInjections
   })
   let defaults = applyTheme(registry, options.theme ?? { settings: [] })
@@ -46,13 +57,25 @@ export async function createTextmateHighlighter(
     getStyleSheet: () => '',
     async highlight(source: string, request: HighlightOptions = {}) {
       if (disposed) throw new Error('Highlighter disposed')
-      const plain = { html: escapeHtml(source), className, highlighted: false }
-      if (source.length > (options.maxCodeLength ?? 100000)) return plain
+      const plain = (reason: FallbackReason) => ({
+        html: escapeHtml(source),
+        className,
+        highlighted: false,
+        reason
+      })
+      if (source.length > (options.maxCodeLength ?? 100000)) return plain('code-too-long')
       const version = revision
       let name = request.language
+      if (name && ['plaintext', 'text', 'txt', 'plain'].includes(name.toLowerCase()))
+        return plain('plaintext')
       const autoDetected = !name && request.autoDetect !== false && !!options.detectLanguage
       if (autoDetected) name = await options.detectLanguage!(source.slice(0, 12000))
+      if (disposed) return plain('disposed')
+      if (version !== revision) return plain('theme-changed')
+      if (!name) return plain(autoDetected ? 'language-not-detected' : 'language-not-specified')
       const language = name ? options.resolveLanguage(name) : undefined
+      if (language === 'plaintext') return plain('plaintext')
+      if (!language) return plain('unsupported-language')
       // grammar 可以更具体，但 language 仍用于报告原检测语言；显式声明不走推断
       const grammarLanguage = autoDetected
         ? resolveDetectedTextmateLanguage(language, source.slice(0, 12000))
@@ -62,21 +85,28 @@ export async function createTextmateHighlighter(
         ? (options.getScope(grammarLanguage) ??
           (grammarLanguage !== language && language ? options.getScope(language) : undefined))
         : undefined
-      if (!scope) return plain
+      if (!scope) return plain('grammar-unavailable')
       const parts = source.split(/(\r\n|\r|\n)/)
       if (
         parts.some(
           (line, index) => index % 2 === 0 && line.length > (options.maxLineLength ?? 10000)
         )
       )
-        return plain
-      const grammar = await registry.loadGrammar(scope)
-      if (!grammar || version !== revision || disposed) return plain
+        return plain('line-too-long')
+      const grammar = await registry.loadGrammar(scope).catch(error => {
+        // 官方 Registry 对根 grammar 缺失会拒绝；只转换 loader 明确返回 null 的情况
+        if (unavailableScopes.has(scope)) return null
+        throw error
+      })
+      if (disposed) return plain('disposed')
+      if (version !== revision) return plain('theme-changed')
+      if (!grammar) return plain('grammar-unavailable')
       const colors = registry.getColorMap()
       // Reuse compiled regexes on a bounded cold-start retry, yielding between attempts.
       const attempts = warmedScopes.has(scope) ? 1 : 3
       for (let attempt = 0; attempt < attempts; attempt++) {
-        if (version !== revision || disposed) return plain
+        if (disposed) return plain('disposed')
+        if (version !== revision) return plain('theme-changed')
         let state = textmate.INITIAL
         const html: string[] = []
         const started = performance.now()
@@ -108,7 +138,7 @@ export async function createTextmateHighlighter(
         }
         if (attempt + 1 < attempts) await new Promise(resolve => setTimeout(resolve, 0))
       }
-      return plain
+      return plain('timeout')
     },
     dispose() {
       disposed = true

@@ -1,6 +1,10 @@
 # Changelog
 
-## Unreleased
+## 0.2.0
+
+- Add independent highlight.js and TextMate presets with common language configuration.
+- Report structured fallback reasons without changing the existing low-level factories.
+- Use presets and display fallback diagnostics in the playground.
 
 - Align package runtime, development and testing requirements with the toolchain: Node ^20.19.0 || >=22.12.0.
 - Validate packed consumers on the minimum runtime and development Node versions.

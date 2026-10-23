@@ -1,6 +1,6 @@
 {
   "name": "vscode-tint",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "VS Code theme-aware code highlighting with highlight.js and TextMate engines",
   "license": "MIT",
   "author": "chaselen",
@@ -43,7 +43,15 @@
       "types": "./dist/vscode.d.ts",
       "import": "./dist/vscode.js"
     },
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./presets/textmate": {
+      "types": "./dist/presets/textmate.d.ts",
+      "import": "./dist/presets/textmate.js"
+    },
+    "./presets/highlightjs": {
+      "types": "./dist/presets/highlightjs.d.ts",
+      "import": "./dist/presets/highlightjs.js"
+    }
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

@@ -9,12 +9,27 @@ export interface HighlightOptions {
   autoDetect?: boolean
 }
 
+/** 纯文本回退的原因；加载错误仍通过 Promise 拒绝报告，不包装成回退 */
+export type FallbackReason =
+  | 'plaintext'
+  | 'language-not-specified'
+  | 'language-not-detected'
+  | 'unsupported-language'
+  | 'grammar-unavailable'
+  | 'code-too-long'
+  | 'line-too-long'
+  | 'timeout'
+  | 'theme-changed'
+  | 'disposed'
+
 /** HTML fragment and the class to apply to its containing code element. */
 export interface HighlightResult {
   html: string
   /** 报告语言不随 TextMate 内部 grammar 适配改变，例如 HTML 文档的检测结果仍为 xml */
   language?: string
   highlighted: boolean
+  /** 仅纯文本回退时提供；可选以兼容已有的 CodeHighlighter 实现 */
+  reason?: FallbackReason
   className: string
 }
 

@@ -14,6 +14,7 @@
 - `src/index.ts`：两套引擎共享的公开类型和安全转义函数
 - `src/highlightjs.ts`：highlight.js 分词及代表性 TextMate scope 的颜色适配
 - `src/textmate.ts`：真实 TextMate grammar 分词和 HTML 渲染
+- `src/presets/`：两套独立常用配置，复用底层工厂，不复制高亮实现
 - `src/theme.ts`：官方主题匹配探针、颜色校验及 metadata 解码
 - `src/vscode.ts`、`src/tokenColors.ts`：扩展宿主中的当前主题读取和自定义规则整理
 - `src/languages.ts`、`src/detection.ts`、`src/oniguruma.ts`：可选语言集合、自动识别和 WASM 适配
@@ -31,6 +32,8 @@
 
 ## 架构与公开 API
 
+- 预设不从根入口导入；轻量预设不得引入 grammar / WASM，TextMate 预设仅在自动检测时延迟加载检测器。预设与底层工厂时间预算保持一致
+- 纯文本回退提供稳定的 `FallbackReason`，加载失败仍抛出；新增原因同步更新两引擎、demo 文案和 README
 - 两套引擎保持一致的 `CodeHighlighter` 接口；公开接口变更同步更新类型、README 和测试
 - 仅使用依赖和 VS Code 的公开 API，不读取引擎私有字段，不自行实现 TextMate 主题选择器匹配
 - highlight.js 类别到 TextMate scope 的映射是近似适配，不能宣称与编辑器或 semantic tokens 完全一致

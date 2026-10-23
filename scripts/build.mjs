@@ -8,7 +8,9 @@ await build({
     'src/textmate.ts',
     'src/languages.ts',
     'src/detection.ts',
-    'src/oniguruma.ts'
+    'src/oniguruma.ts',
+    'src/presets/textmate.ts',
+    'src/presets/highlightjs.ts'
   ],
   outdir: 'dist',
   bundle: true,
