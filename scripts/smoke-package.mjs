@@ -17,6 +17,7 @@ try {
     'install',
     archive,
     '--ignore-scripts',
+    '--engine-strict',
     '--no-audit',
     '--no-fund',
     '--registry=https://registry.npmjs.org'
@@ -114,6 +115,7 @@ try {
     'vscode-oniguruma@2.0.1',
     'tm-grammars@1.32.22',
     '--ignore-scripts',
+    '--engine-strict',
     '--no-audit',
     '--no-fund',
     '--registry=https://registry.npmjs.org'

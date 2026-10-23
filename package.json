@@ -6,7 +6,7 @@
   "author": "chaselen",
   "type": "module",
   "engines": {
-    "node": ">=22.18.0"
+    "node": "^20.19.0 || >=22.12.0"
   },
   "packageManager": "npm@10.9.3",
   "sideEffects": false,

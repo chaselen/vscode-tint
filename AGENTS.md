@@ -1,5 +1,12 @@
 # 项目协作规范
 
+## 文档职责
+
+- README 面向包使用者，仅保留安装、引擎选择、接入示例、公开契约和必要的使用边界
+- AGENTS 面向开发与维护，记录环境、架构约束、验证、演示维护和发布流程；不要将这些内容重复写入 README
+- 详细参数和默认值优先维护在公开类型与 JSDoc，README 不复制完整方法或语言清单
+- CHANGELOG 记录用户可见变化，第三方来源和许可维护在 `THIRD_PARTY_NOTICES.txt` 及 `demo/themes/`
+
 ## 项目目标与结构
 
 本项目维护 `vscode-tint`，面向 VS Code Webview 提供代码高亮和主题适配。支持 highlight.js 为主的轻量引擎，以及 vscode-textmate 为主的完整引擎。
@@ -18,7 +25,7 @@
 ## 运行环境
 
 - 使用 npm 和 `package-lock.json`，遵循 `.nvmrc`、`package.json` 的 `engines` 和 `packageManager`
-- 当前 Node.js 要求 >=22.18.0，可用 `fnm exec --using 22.18.0 <command>` 执行
+- 发布包运行、源码开发、测试和演示构建统一要求 Node `^20.19.0 || >=22.12.0`，默认使用 `.nvmrc` 中的 22.12.0，可用 `fnm exec --using 22.12.0 <command>` 执行
 - 安装优先使用 `npm ci`，不得擅自调整全局运行环境或版本约束
 - 使用 `.oxfmtrc.json`，只格式化本次修改的文件
 
@@ -32,6 +39,10 @@
 - Webview 通用入口不依赖 Node.js 或 `vscode`，宿主相关逻辑仅放在 `/vscode`
 - 公共 WASM 接口接受调用方提供的数据，不绑定 Vite 的 `?url` 或某种资源部署方式
 - 不默认引入所有语言；语言集合与检测候选需明确，新增语言时核对嵌入依赖和上游许可证
+- 宿主入口内联 JSONC 解析器，避免 Node 直接加载其省略扩展名的 ESM 导入；通用入口与可选 grammar 保持独立
+- `tokenizeLine2()` 的 metadata 位布局集中封装在 `src/theme.ts`，升级 vscode-textmate 时用真实引擎测试核对
+- HTML/XML 仅在自动 grammar 选择阶段适配，保持原始检测结果；JSX 使用 JS grammar，TSX 须显式指定，不新增启发式正则猜测
+- HTML/CSS 标签模板复用 `tm-grammars` 的 `es-tag-html` / `es-tag-css`，不复制上游正则；新增注入时检查根 scope、依赖及许可
 
 ## 安全、资源与生命周期
 
@@ -49,6 +60,12 @@
 - 页面使用语义 HTML、带标签的原生控件和响应式 CSS，支持键盘操作与高对比主题
 - 修改页面后在真实浏览器验证两套引擎、亮暗和高对比主题、代码转义及窄屏布局
 
+演示开发运行 `npm run demo`，生产构建运行 `npm run demo:build`（输出 `demo-dist/`），本地预览运行 `npm run demo:preview`。主题快照来源、版本和许可证记录在 `demo/themes/`。
+
+演示的 TextMate 单行 / 代码块预算为 1000ms / 1500ms，用于容纳嵌入语法首次编译；不要据此放宽库默认预算。
+
+GitHub Pages 通过 `.github/workflows/pages.yml` 在 `main` 更新后部署，也支持手动触发。部署命令为 `npm run demo:build -- --base=/vscode-tint/`；本地保持相对资源路径。部署后检查在线页面的 grammar 动态导入、WASM 和主题切换。
+
 ## 验证与发布
 
 - `npm run check`：源码、测试及演示代码的类型检查
@@ -60,6 +77,9 @@
 - 仅演示或文档改动按实际影响验证，不重复已通过且未受后续修改影响的检查
 - 发布前运行完整检查、测试、构建和消费者验证，检查 `npm pack` 的文件清单与体积
 - npm 发布采用 `files` 白名单，只分发库产物、README、更新说明和许可证
+- CI 在 Node 20.19.0、22.12.0 和 24 上检查开发工具链和真实打包消费者；消费者安装启用 `--engine-strict`
+- `npm pack` / `npm publish` 已通过 `prepack` 执行类型检查、测试和库构建，完整发布验证可运行 `npm pack` 后执行 `npm run test:package`，不要重复调用相同检查
+- 发布前运行 `npm whoami --registry=https://registry.npmjs.org` 确认账号；正式发布命令为 `npm publish --access public --registry=https://registry.npmjs.org`
 - 发布到 npm 官方源并使用具有 `vscode-tint` 发布权限的账号；不读取、输出或写入仓库任何令牌
 - 仅在用户明确要求时提交或发布；提交使用英文 Conventional Commits，不覆盖无关未提交改动
 

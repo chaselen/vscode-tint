@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Align package runtime, development and testing requirements with the toolchain: Node ^20.19.0 || >=22.12.0.
+- Validate packed consumers on the minimum runtime and development Node versions.
+
 ## 0.1.0
 
 - Add highlight.js and TextMate engines with a shared HTML and lifecycle API.
