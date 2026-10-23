@@ -2,6 +2,8 @@
 
 面向 VS Code Webview 的代码高亮与主题适配。提供两套可独立导入的引擎，支持自动识别语言、主题切换和安全 HTML 输出。
 
+[在线演示](https://chaselen.github.io/vscode-tint/)：切换 VS Code 主题，实时对比 highlight.js 与 TextMate 两套引擎。
+
 | 引擎          | 分词与 HTML                      | 主题匹配                                    | 适合场景                       |
 | ------------- | -------------------------------- | ------------------------------------------- | ------------------------------ |
 | `highlightjs` | highlight.js                     | 官方 vscode-textmate，使用代表性 scope 探针 | 优先控制包体积的帖子、文档展示 |
@@ -213,6 +215,8 @@ fnm exec --using 22.18.0 npm run demo
 可切换主题、单引擎 / 双引擎视图、七种代码示例（含 HTML/CSS 标签模板）和语言模式，支持自动识别、纯文本和未知语言回退，也可直接编辑代码。主题快照来源和许可证记录在 `demo/themes/`。页面直接调用库的实现，不依赖已发布 npm 包。
 
 `npm run demo:build` 生成独立静态页面到 `demo-dist/`，`npm run demo:preview` 预览生产构建。演示代码、主题和静态产物均不进入 npm 发布包。
+
+GitHub Pages 在 `main` 分支更新后自动构建并部署，也可从 Actions 手动运行部署工作流。部署构建使用 `/vscode-tint/` 作为资源基础路径，本地开发与预览保持相对路径。
 
 ## 开发与发布
 
